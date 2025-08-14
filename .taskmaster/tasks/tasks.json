@@ -1,0 +1,276 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Initialize repo, environments, and SQLite runs registry",
+        "description": "Set up project structure, Python env, package management, and SQLite schema for runs registry to support MVP lifecycle.",
+        "details": "- Tech stack: Python 3.11+, Poetry or uv, Ruff/Black, Pytest.\n- Structure: /strategies, /runner, /evaluator, /adapters/{tradier,trade_locker}, /data_loaders, /dashboard, /coordinator, /ops, /.taskmaster.\n- SQLite: file runs.db, tables:\n  runs(id TEXT PK, strategy_id TEXT, spec_version TEXT, phase TEXT CHECK(phase IN('research','backtest','implement')),\n       status TEXT CHECK(status IN('queued','running','passed','failed')), started_at TIMESTAMP, finished_at TIMESTAMP,\n       kpis_json TEXT, artifacts_path TEXT, profile TEXT DEFAULT 'demo');\n  artifacts(id TEXT PK, run_id TEXT FK runs(id), kind TEXT, path TEXT, meta_json TEXT);\n- Seed ops/tasks.json and .taskmaster/tasks folder.\n- Provide .env with POLYGON_DATA_ROOT, TRADIER_API_KEY, TRADELOCKER_API_KEY, FEATURE_TRADIER_FUTURES=false.\n- CLI scaffold with Typer: `algop` root command.\n- Add migration script to init DB on first run.",
+        "testStrategy": "- Unit test DB init: tables exist and constraints enforced.\n- Verify CLI commands exist: `algop db init`, `algop runs list`.\n- Integration: create a dummy run row and fetch it.\n- Lint/format checks in CI.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Scaffold repository, tooling, and CI",
+            "description": "Initialize Git repo and Python project with pyproject-based tooling, code style, testing, and basic CI to enforce quality from day one.",
+            "dependencies": [],
+            "details": "• Initialize repo: git init; create README.md, LICENSE, .gitignore (Python, venv, __pycache__, .env, *.db, artifacts/).\n• Choose package manager: Poetry or uv. For Poetry: poetry init -n; poetry env use 3.11; poetry add typer[all] sqlite-utils pydantic python-dotenv rich; poetry add -D ruff black pytest pytest-cov mypy pre-commit. For uv: uv init; uv add same deps; configure pyproject accordingly.\n• Configure pyproject.toml: set [project] metadata, dependencies, tool.ruff (rules, isort), tool.black, tool.pytest.ini_options, tool.mypy, scripts entry point [project.scripts] algop = \"algop.cli:app\".\n• Add pre-commit with hooks: ruff, black, end-of-file-fixer, trailing-whitespace; pre-commit install.\n• Create tests/ with placeholder test_smoke.py; add src/ layout: src/algop/ package root.\n• Add GitHub Actions CI workflow .github/workflows/ci.yml: matrix for Python 3.11/3.12; steps: checkout, setup-python, install (Poetry/uv), run ruff/black --check, pytest with coverage, cache deps.\n• Document commands in README: setup, run lints, tests.",
+            "status": "pending",
+            "testStrategy": "• CI runs lints (ruff/black) and pytest on push/PR.\n• Local smoke test: pytest -q succeeds.\n• Verify algop console script resolves (import check) via python -c \"import algop\"."
+          },
+          {
+            "id": 2,
+            "title": "Create project directory structure and placeholders",
+            "description": "Establish agreed folder layout with src/ package and empty module stubs for each domain area to enable incremental implementation.",
+            "dependencies": [],
+            "details": "• Under src/algop/, create packages: strategies/, runner/, evaluator/, adapters/tradier/, adapters/trade_locker/, data_loaders/, dashboard/, coordinator/, ops/, _taskmaster/ (maps to .taskmaster at repo root for non-code assets).\n• Add __init__.py in each package; add minimal module files: strategies/__init__.py; runner/core.py; evaluator/core.py; adapters/tradier/client.py; adapters/trade_locker/client.py; data_loaders/base.py; dashboard/app.py; coordinator/service.py; ops/__init__.py; _taskmaster/__init__.py.\n• At repo root create directories: artifacts/ (git-ignored), .taskmaster/ (for tasks), and ops/seed files.\n• Provide basic type stubs and TODOs in each module with minimal classes/functions to satisfy imports.\n• Update README with structure tree and purpose of each directory.",
+            "status": "pending",
+            "testStrategy": "• Import tests: parametrize over package import paths to ensure they import without errors.\n• Validate that console script algop imports from src/ layout."
+          },
+          {
+            "id": 3,
+            "title": "Environment configuration and secrets setup",
+            "description": "Provide .env management, environment validation, and configuration loader to standardize runtime settings.",
+            "dependencies": [],
+            "details": "• Add .env.example with keys: POLYGON_DATA_ROOT=./data/polygon, TRADIER_API_KEY=, TRADELOCKER_API_KEY=, FEATURE_TRADIER_FUTURES=false.\n• Add .env to .gitignore; commit .env.example only.\n• Implement config module src/algop/config.py using pydantic BaseSettings to load env vars and cast types; include defaults where applicable (e.g., FEATURE_TRADIER_FUTURES default False).\n• Add function load_env() that loads dotenv (.env) at project root early in CLI startup.\n• Provide validation errors with clear messages and optional --profile flag to switch profiles (e.g., demo) with sensible fallbacks.\n• Document environment setup steps in README.",
+            "status": "pending",
+            "testStrategy": "• Unit tests: loading from .env temp file; type casting of FEATURE_TRADIER_FUTURES; missing required vars raise informative errors.\n• CLI smoke: algop --help after creating a minimal .env."
+          },
+          {
+            "id": 4,
+            "title": "SQLite schema and migration initializer",
+            "description": "Implement SQLite runs registry schema, idempotent migration script, and data access layer to bootstrap runs.db on first use.",
+            "dependencies": [],
+            "details": "• Define DB path default: runs.db at repo root; allow override via env CONFIG if needed.\n• Create src/algop/db/schema.sql with CREATE TABLE statements:\n  - runs(id TEXT PRIMARY KEY, strategy_id TEXT, spec_version TEXT, phase TEXT CHECK(phase IN('research','backtest','implement')), status TEXT CHECK(status IN('queued','running','passed','failed')), started_at TIMESTAMP, finished_at TIMESTAMP, kpis_json TEXT, artifacts_path TEXT, profile TEXT DEFAULT 'demo');\n  - artifacts(id TEXT PRIMARY KEY, run_id TEXT REFERENCES runs(id) ON DELETE CASCADE, kind TEXT, path TEXT, meta_json TEXT);\n• Implement src/algop/db/migrate.py with ensure_db_initialized(db_path):\n  - Open connection with sqlite3; enable PRAGMA foreign_keys=ON; check sqlite_master for tables; apply schema.sql inside transaction; create migrations table to store schema_version; idempotent re-run safe.\n• Provide minimal DAO helpers in src/algop/db/dao.py: insert_run, update_run_status, insert_artifact, list_runs.\n• Add seed files: ops/tasks.json with sample tasks; create .taskmaster/tasks/ folder and place a README and sample task YAML/JSON.",
+            "status": "pending",
+            "testStrategy": "• Unit tests: ensure ensure_db_initialized creates tables; constraints enforced (CHECK phase/status; FK on artifacts.run_id).\n• Insert dummy run row then artifact referencing it; expect success; inserting invalid phase/status should fail.\n• Idempotency: calling ensure_db_initialized twice does not error and does not drop data."
+          },
+          {
+            "id": 5,
+            "title": "CLI scaffold with Typer and DB init commands",
+            "description": "Create algop Typer CLI entrypoint with commands to initialize the database, manage runs, and verify environment.",
+            "dependencies": [],
+            "details": "• Implement src/algop/cli.py using Typer: app = Typer(help=\"Algo platform CLI\").\n• Subcommands:\n  - db init: calls ensure_db_initialized; prints path and schema_version.\n  - runs list: lists recent runs with columns (id, strategy_id, phase, status, started_at, finished_at, profile).\n  - env show: prints effective config (mask secrets) and resolves POLYGON_DATA_ROOT.\n• Wire console script in pyproject [project.scripts]: algop = \"algop.cli:app\".\n• Add rich table output; exit codes non-zero on errors.\n• Update README with usage examples.\n• Optional: completion generation command.\n",
+            "status": "pending",
+            "testStrategy": "• CLI tests with pytest invoking subprocess or Typer runner: algop db init creates runs.db; algop runs list works on empty DB; env show loads .env.\n• Integration test: insert a dummy run via DAO then verify it appears in runs list.\n• Lint/format checks in CI remain green."
+          },
+          {
+            "id": 6,
+            "title": "Scaffold repository, tooling, and CI",
+            "description": "Initialize Git, Python project metadata, package management, code quality tooling, and CI to enforce standards from day one.",
+            "dependencies": [
+              "1.1"
+            ],
+            "details": "1) Initialize repo: git init; create README.md, LICENSE, and .gitignore covering Python, venv, __pycache__, .env, *.db, artifacts/, .ruff_cache, .pytest_cache, .mypy_cache, .coverage, dist/, build/.\n2) Package manager: choose Poetry or uv.\n- Poetry: poetry init -n; poetry env use 3.11; poetry add typer[all] sqlite-utils pydantic python-dotenv rich; poetry add -D ruff black pytest pytest-cov mypy pre-commit.\n- uv: uv init; uv add typer[all] sqlite-utils pydantic python-dotenv rich; uv add --dev ruff black pytest pytest-cov mypy pre-commit.\n3) pyproject.toml: set [project] name=algop, version=0.1.0, requires-python=\">=3.11\"; dependencies as above; configure tool.ruff (select rules, isort), tool.black, tool.pytest.ini_options (testpaths=[\"tests\"], addopts=\"-q --maxfail=1\"), tool.mypy (strict, python_version=3.11), tool.coverage.\n4) Pre-commit: .pre-commit-config.yaml with hooks for ruff, black, end-of-file-fixer, trailing-whitespace; run pre-commit install.\n5) CI: .github/workflows/ci.yml with matrix for 3.11/3.12, steps: checkout, setup-python, install (Poetry: pipx install poetry && poetry install --no-interaction; uv: pipx install uv && uv sync), run linters (ruff, black --check, mypy), run tests with coverage.\n6) Add basic README sections: Overview, Getting Started, Tooling, Makefile targets.\n7) Optional Makefile with targets: setup, lint, format, test, cov, run.\nCommit all files as initial scaffold.",
+            "status": "pending",
+            "testStrategy": "Run CI locally via act or push to GitHub; verify ruff, black, mypy, and pytest pass on a clean clone."
+          },
+          {
+            "id": 7,
+            "title": "Create project structure and module scaffolds",
+            "description": "Lay out the required directories and minimal __init__.py/module placeholders for each component to support imports and future development.",
+            "dependencies": [
+              "1.1"
+            ],
+            "details": "1) Create directories at repo root: strategies/, runner/, evaluator/, adapters/tradier/, adapters/trade_locker/, data_loaders/, dashboard/, coordinator/, ops/, .taskmaster/.\n2) Add Python packages with __init__.py in runner, evaluator, adapters, data_loaders, dashboard, coordinator, ops. For strategies/, place as data (no __init__.py) and allow JSON files; add README.md explaining spec files.\n3) Add placeholders: \n- runner/main.py with a stub Runner class.\n- evaluator/main.py with a stub Evaluator class.\n- data_loaders/base.py defining DataLoader protocol/interface.\n- adapters/tradier/client.py and adapters/trade_locker/client.py with TODOs.\n- coordinator/service.py with stubs for queueing runs.\n- ops/README.md explaining ops/tasks.json purpose.\n4) Add tests/ directory with conftest.py and smoke tests ensuring packages import.\n5) Add artifacts/ to .gitignore and create directory during runtime only (do not commit).\n6) Update README with the tree and brief explanation of each folder.",
+            "status": "pending",
+            "testStrategy": "Run pytest to ensure import smoke tests pass; validate that python -c \"import runner, evaluator\" works; confirm no missing __init__.py issues."
+          },
+          {
+            "id": 8,
+            "title": "Implement SQLite runs registry schema and migration init",
+            "description": "Define runs.db schema and write an idempotent migration script that creates tables and constraints on first run.",
+            "dependencies": [],
+            "details": "1) Add module ops/db.py with functions: get_conn(db_path: str) -> sqlite3.Connection; enable foreign_keys PRAGMA; apply_migrations().\n2) Create migrations/0001_init.sql defining:\n- runs(id TEXT PRIMARY KEY, strategy_id TEXT, spec_version TEXT, phase TEXT CHECK(phase IN('research','backtest','implement')), status TEXT CHECK(status IN('queued','running','passed','failed')), started_at TIMESTAMP, finished_at TIMESTAMP, kpis_json TEXT, artifacts_path TEXT, profile TEXT DEFAULT 'demo').\n- artifacts(id TEXT PRIMARY KEY, run_id TEXT REFERENCES runs(id) ON DELETE CASCADE, kind TEXT, path TEXT, meta_json TEXT).\n- A migrations meta table (schema_migrations(version TEXT PRIMARY KEY)).\n3) Implement apply_migrations() to check schema_migrations, apply 0001 if missing, record version inside a transaction; make the operation idempotent.\n4) Default DB path: runs.db in repo root; allow override via ALGOP_DB_PATH env var.\n5) Add minimal CRUD helpers: insert_run, list_runs, insert_artifact.\n6) Add unit tests in tests/test_db_init.py to validate table existence and constraints.",
+            "status": "pending",
+            "testStrategy": "Run migration twice to confirm idempotency; assert PRAGMA foreign_keys=ON; insert invalid phase/status rows should fail; insert and retrieve a run and linked artifact."
+          },
+          {
+            "id": 9,
+            "title": "Seed ops/tasks and environment configuration",
+            "description": "Provide initial operational task definitions and environment variables for data/broker integration and feature flags.",
+            "dependencies": [],
+            "details": "1) Create .env.example with POLYGON_DATA_ROOT=./data/polygon, TRADIER_API_KEY=changeme, TRADELOCKER_API_KEY=changeme, FEATURE_TRADIER_FUTURES=false, ALGOP_DB_PATH=./runs.db.\n2) Add python-dotenv loading in CLI entry (see subtask 6) to load .env if present.\n3) Seed ops/tasks.json with example tasks: {\"version\":\"1\",\"tasks\":[{\"id\":\"db_init\",\"cmd\":\"algop db init\"},{\"id\":\"list_runs\",\"cmd\":\"algop runs list\"}]}.\n4) Create .taskmaster/tasks/ with sample task files (YAML or JSON) mirroring ops/tasks.json; include README explaining how to add tasks.\n5) Add validation schema (optional) for tasks.json and a small validator in ops/tasks.py to load and list tasks.",
+            "status": "pending",
+            "testStrategy": "Load .env via a small script to ensure variables are available; unit test ops/tasks.py to parse tasks.json and enumerate tasks; verify FEATURE_TRADIER_FUTURES flag defaults correctly when missing."
+          },
+          {
+            "id": 10,
+            "title": "CLI scaffold with Typer and DB init/list commands",
+            "description": "Expose algop root command using Typer with subcommands to initialize the DB and interact with the runs registry.",
+            "dependencies": [],
+            "details": "1) Create algop/ package (src layout or top-level per current structure) with __init__.py and cli.py; if using src layout, configure packages in pyproject and move code under src/algop for imports.\n2) Typer setup: in cli.py define app = Typer(); add commands:\n- db init: loads .env, calls ops.db.apply_migrations() using ALGOP_DB_PATH.\n- runs list: optional filters --status, --phase; prints tabular output using rich.\n- runs add-demo: inserts a dummy run row for testing.\n3) Entry point: in pyproject [project.scripts], set algop = \"algop.cli:app\" for Typer integration.\n4) Ensure python-dotenv is loaded at startup to read .env.\n5) Add docs in README for usage examples: algop db init; algop runs list.\n6) Add tests in tests/test_cli.py using Typer’s CliRunner to verify commands exist and basic behaviors.",
+            "status": "pending",
+            "testStrategy": "Use CliRunner to invoke algop db init twice (idempotent), algop runs add-demo then algop runs list to see the row; verify filtering flags work; run within CI."
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Author Strategy Spec v1 JSON schema and docs",
+        "description": "Create formal JSON Schema for strategy specifications and author documentation with examples.",
+        "details": "- File: strategies/spec.schema.json (Draft 2020-12).\n- Top-level fields: id, name, version, agent_roles, broker, market, timeframe, instruments, parameters, entry_rules, exit_rules, risk, data_mapping, backtest, kpi_profile, promotion, artifacts.\n- data_mapping must map parquet columns to canonical fields per dataset (equities_min, equities_5min, options_min).\n- backtest: start, end, initial_cash, commission_model, slippage, benchmark.\n- kpi_profile defaults to demo thresholds from PRD; allow overrides.\n- promotion: rules for gating (e.g., demo->live conditions).\n- Docs: strategies/README.md describing each field; include JSON examples placeholders.",
+        "testStrategy": "- Validate schema with jsonschema: positive and negative cases.\n- Generate two example specs must validate.\n- Snapshot test of docs anchors for required fields.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Convert ZRCE Second Chance strategy to spec",
+        "description": "Create strategies/zrce_second_chance.json conforming to Spec v1 with SPY options details.",
+        "details": "- broker: Tradier; market: options; timeframe: options_min.\n- instruments: SPY options; parameters: lookbacks, signal thresholds; define entry/exit rules per ZRCE logic; include risk sizing.\n- data_mapping for options_min including option_symbol, underlying, strike, expiry, right, bid, ask, mid, last, iv, delta, gamma, theta, vega, open, high, low, close, volume.\n- backtest window sample; initial_cash; commission.\n- kpi_profile: demo thresholds as per PRD.\n- artifacts: request evaluator metrics and trade logs.",
+        "testStrategy": "- Schema validation passes.\n- Dry-run with runner --demo to ensure parameters map to runtime.\n- Unit test mapping completeness: required fields present.",
+        "priority": "high",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Convert Ghetto Spread (AMD debit call spread with conversion) to spec",
+        "description": "Create strategies/ghetto_spread_amd.json with conversion trigger and width parameters.",
+        "details": "- broker: Tradier; market: options; underlying AMD.\n- parameters: long_leg_dte, short_leg_width, debit_limit, conversion_trigger (e.g., price move or delta), roll_rules, max_risk.\n- entry_rules: open debit call spread; exit/convert: when trigger met, convert per spec (define width, timing).\n- data_mapping: same as options_min mapping.\n- backtest config, risk sizing, KPI profile demo.\n- Ensure fields map cleanly to runner parameters.",
+        "testStrategy": "- Validate against schema.\n- Runner dry-run ensures parameter plumbing present.\n- Unit test: trigger logic serialization present and parseable.",
+        "priority": "high",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Implement Polygon parquet loaders",
+        "description": "Loaders for equities_min, equities_5min, and options_min parquet datasets with column mapping per spec.",
+        "details": "- Use pyarrow.dataset or pandas+pyarrow to read partitioned parquet under POLYGON_DATA_ROOT.\n- Provide DataLoader interface: load(timeframe, symbols, start, end, mapping) -> DataFrame indexed by timestamp with canonical columns.\n- Handle schema variance via mapping in spec: rename/select/cast columns; fill missing with NaN; enforce timezone UTC.\n- Optimize with predicate pushdown and column pruning.\n- Expose CLI: `algop data sample --dataset options_min --symbol SPY --start ... --end ...`.",
+        "testStrategy": "- Unit tests with synthetic parquet files for each dataset and mapping.\n- Property tests: round-trip mapping preserves required columns.\n- Performance test: load 1 month within N seconds target.",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Runner core with demo SMA backtest (--demo) and registry writes",
+        "description": "Implement runner that executes a demo SMA strategy using data loaders, producing artifacts and recording runs.",
+        "details": "- CLI: `algop run --spec path --backtest --demo` executes SMA on equities_min or options_min mock depending on spec.market.\n- For demo: ignore broker integration, simulate orders, generate trades.csv, equity_curve.csv, positions.json under artifacts/<run_id>/.\n- Update runs.db with status and kpis_json placeholder; write run manifest run.json.",
+        "testStrategy": "- Integration test running a toy spec produces artifacts and DB rows.\n- Verify idempotency of run IDs and artifact paths.\n- Unit tests for order simulation and PnL calc.",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Evaluator service writing evaluation.json and pass/fail",
+        "description": "Compute KPIs and gate runs per demo profile thresholds; persist evaluation.json and update registry.",
+        "details": "- KPIs: max_drawdown, sharpe, win_rate, trades count; compute from trades.csv and equity_curve.csv.\n- Thresholds: max_drawdown<=0.5, sharpe>=0.2, win_rate>=0.45, trades>=3 in demo profile.\n- Output evaluation.json with metrics, thresholds, pass/fail, and reasons; set runs.status passed/failed accordingly.\n- Provide importable module and CLI: `algop evaluate <run_id>`.",
+        "testStrategy": "- Unit tests for KPI calculations with deterministic datasets.\n- Threshold boundary tests.\n- Integration: run demo then evaluate and assert pass/fail behavior updates DB and dashboard feed.",
+        "priority": "high",
+        "dependencies": [
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Integrate Lumibot backtest path in Runner (--backtest)",
+        "description": "Add real backtest execution via Lumibot while retaining --demo path.",
+        "details": "- Introduce strategy adapter translating Spec v1 to Lumibot strategy parameters/rules.\n- When --backtest without --demo, construct Lumibot data feed using parquet via custom data handler if needed; otherwise inject candles from loaders.\n- Map orders/trades from Lumibot to standard artifacts (trades.csv, equity_curve.csv).\n- Add broker simulation via Lumibot paper broker.\n- Feature flag to switch between demo and lumibot.",
+        "testStrategy": "- Integration test a minimal Lumibot SMA strategy produces artifacts.\n- Mock Lumibot in unit tests to validate adapter mapping.\n- Regression: ensure --demo path still works.",
+        "priority": "high",
+        "dependencies": [
+          5,
+          6,
+          7
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Broker adapter surfaces: Tradier (options) and TradeLocker/Trend (forex)",
+        "description": "Create placeholder adapters with method signatures for placing/canceling orders and fetching balances; gate futures with feature flag.",
+        "details": "- Define BrokerAdapter ABC with: authenticate(), get_account(), place_order(), cancel_order(), get_positions(), get_quotes().\n- Implement TradierOptionsAdapter with placeholders; config via TRADIER_API_KEY; futures operations behind FEATURE_TRADIER_FUTURES flag.\n- Implement TradeLockerForexAdapter with placeholders for Trend/TradeLocker APIs.\n- Non-functional in MVP backtests; provide stubs returning NotImplemented in live mode.",
+        "testStrategy": "- Unit tests ensure adapters respect feature flags and raise NotImplemented for live operations.\n- Smoke tests for auth configuration loading.\n- Static checks on method signatures used by runner/deployer.",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          2,
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Dashboard MVP: list runs, filters, KPIs summary, badges",
+        "description": "Build lightweight dashboard to display runs, status filters, KPI summaries, and pass/fail badges.",
+        "details": "- Framework: FastAPI + Jinja2 or simple static page served by FastAPI.\n- Endpoints: GET /runs?status=, GET /runs/{id}, serve artifacts links.\n- UI: table with run id, strategy, profile, phase, status badge, key KPIs; filter by status.\n- Read evaluation.json and kpis_json; compute summary.\n- Dockerfile for dashboard service.",
+        "testStrategy": "- API tests for filters and pagination if any.\n- Snapshot tests of HTML rendering badges.\n- Manual E2E: create runs via runner, evaluate, verify appearance.",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          6,
+          7
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Coordinator loop to execute tasks and update ops/tasks.json",
+        "description": "Implement coordinator that sequences RBI lifecycle steps, updates ops/tasks.json, and tracks progress in .taskmaster/tasks.",
+        "details": "- CLI: `algop coord run --spec <path>`: enqueue research/backtest/implement tasks; for MVP, research is spec validation + data sampling; backtest via runner; evaluate; on PASS, mark promotion-ready in ops/tasks.json.\n- ops/tasks.json schema: {id, spec, phase, status, started_at, finished_at, run_id, notes}.\n- Write .taskmaster/tasks/<id>.json for traceability.\n- Retry policy and basic error handling.",
+        "testStrategy": "- Unit tests for state transitions and file updates.\n- Integration: end-to-end flow producing updated ops/tasks.json entries.\n- Failure path tests with injected errors.",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          5,
+          6,
+          7,
+          10
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Define and enforce promotion policy for demo/live",
+        "description": "Codify promotion rules and wiring: demo profile gating to allow promotion flag; live deploy stub via Deployer agent.",
+        "details": "- Policy: from demo to live only if evaluation pass and broker feature flags allow; require min trades>=3 and all thresholds met; human approval placeholder.\n- Add `promotion` section in spec and implement check in coordinator.\n- Deployer stub: records a promotion record, no live trading; if live, require adapter readiness and env var CONFIRM=YES.\n- Dashboard: show promotion eligibility badge.",
+        "testStrategy": "- Unit tests for policy evaluation logic across edge cases.\n- Integration: passing run marks eligible; failing run not eligible; dashboard shows correct badge.\n- Security test: ensure live path blocked without confirmation and flags.",
+        "priority": "medium",
+        "dependencies": [
+          7,
+          9,
+          10,
+          11
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-12T07:24:04.953Z",
+      "updated": "2025-08-12T07:24:04.954Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

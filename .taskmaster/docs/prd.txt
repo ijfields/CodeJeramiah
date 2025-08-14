@@ -1,0 +1,44 @@
+Algo Platform PRD (RBI + Subagents)
+
+Vision
+- Spec-first, multi-agent platform to research, code, backtest, and deploy strategies (options, forex, futures) with Lumibot, Tradier, and TradeLocker/Trend. Backtests read Polygon parquet; artifacts drive KPIs and promotion.
+
+Scope (MVP)
+- Agents: Researcher, Architect, Coder (Lumibot), Runner, Evaluator, Fixer, Deployer, Coordinator
+- RBI lifecycle: Research → Backtest → Implement
+- Data: polygon_flat parquet (equities_min, equities_5min, options_min)
+- Brokers: Tradier (options now; futures gated), TradeLocker/Trend (forex)
+- KPI gates (demo profile initially): max_drawdown<=0.5, sharpe>=0.2, win_rate>=0.45, trades>=3
+- Dashboard: list runs, badges, metrics, promotion
+
+Initial Strategies
+1) ZRCE Second Chance (SPY options)
+2) Ghetto Spread (AMD debit call spread with conversion)
+
+Deliverables
+- Strategy Spec v1 JSON schema and two example specs under strategies/
+- Runner integrates Lumibot later; demo SMA in place now
+- Evaluator writes evaluation.json and dashboard shows pass/fail
+- SQLite runs registry
+
+Tasks
+- Author Strategy Spec v1 doc and JSON schema
+- Convert ZRCE to spec, verify fields map to parameters
+- Convert Ghetto Spread to spec, define conversion trigger/width
+- Implement polygon parquet loaders (equities_min/5min, options_min)
+- Integrate Lumibot backtest path in runner (--backtest), keep --demo
+- Build Tradier options adapter surface (placeholders ok)
+- Build TradeLocker/Trend forex adapter surface (placeholders ok)
+- Expand dashboard: filter by status, show KPIs summary
+- Add coordinator loop to execute tasks and update ops/tasks.json
+- Define promotion policy for demo/live
+
+Constraints / Risks
+- Tradier futures pending enablement; gate with feature flag
+- Data schema variance across parquet sources; add column mapping in spec
+
+Success Criteria
+- Run backtests for both seed strategies from spec and see PASS under demo profile
+- Tasks tracked in .taskmaster/tasks and ops/tasks.json
+
+

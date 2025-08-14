@@ -1,0 +1,19 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/strategies/spec.schema.json",
+  "title": "Strategy Spec v1",
+  "type": "object",
+  "required": ["version","name","slug","universe","timeframe","data","broker","backtest","outputs"],
+  "properties": {
+    "version": {"type": "string","const": "1.0"},
+    "name": {"type": "string"}, "slug": {"type": "string"},
+    "universe": {"type": "array","items": {"type": "string"}, "minItems": 1},
+    "timeframe": {"type": "string"},
+    "entry": {"type": "object"},
+    "legs": {"type": "array"}, "risk_exits": {"type": "object"}, "sizing": {"type": "object"},
+    "data": {"type": "object","required": ["source","paths","tz"]},
+    "broker": {"type": "object","required": ["name","account_type"]},
+    "backtest": {"type": "object","required": ["start","end","cash"]},
+    "outputs": {"type": "array","items": {"type": "string"}, "minItems": 1}
+  }
+}
