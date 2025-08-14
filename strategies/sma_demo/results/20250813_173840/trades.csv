@@ -1,0 +1,40 @@
+date,symbol,side,price,pnl
+"Ticker
+    2023-02-01
+Name: 20, dtype: object",NIO,BUY,12.100000381469727,
+"Ticker
+    2023-02-10
+Name: 27, dtype: object",NIO,SELL,10.3100004196167,-1.7899999618530273
+"Ticker
+    2023-03-30
+Name: 60, dtype: object",NIO,BUY,10.460000038146973,
+"Ticker
+    2023-04-18
+Name: 72, dtype: object",NIO,SELL,9.470000267028809,-0.9899997711181641
+"Ticker
+    2023-05-17
+Name: 93, dtype: object",NIO,BUY,8.029999732971191,
+"Ticker
+    2023-05-31
+Name: 102, dtype: object",NIO,SELL,7.53000020980835,-0.4999995231628418
+"Ticker
+    2023-06-15
+Name: 113, dtype: object",NIO,BUY,9.789999961853027,
+"Ticker
+    2023-08-18
+Name: 157, dtype: object",NIO,SELL,10.670000076293945,0.880000114440918
+"Ticker
+    2023-10-17
+Name: 198, dtype: object",NIO,BUY,8.529999732971191,
+"Ticker
+    2023-10-18
+Name: 199, dtype: object",NIO,SELL,7.909999847412109,-0.619999885559082
+"Ticker
+    2023-11-15
+Name: 219, dtype: object",NIO,BUY,7.940000057220459,
+"Ticker
+    2023-11-20
+Name: 222, dtype: object",NIO,SELL,7.800000190734863,-0.1399998664855957
+"Ticker
+    2023-12-15
+Name: 240, dtype: object",NIO,BUY,7.980000019073486,
