@@ -1,0 +1,29 @@
+{
+  "passed": false,
+  "checks": {
+    "max_drawdown": {
+      "value": 0.2739392190347437,
+      "op": "<=",
+      "threshold": 0.5,
+      "passed": true
+    },
+    "sharpe": {
+      "value": 0.5614066177261662,
+      "op": ">=",
+      "threshold": 0.2,
+      "passed": true
+    },
+    "win_rate": {
+      "value": 0.16666666666666666,
+      "op": ">=",
+      "threshold": 0.45,
+      "passed": false
+    },
+    "trades": {
+      "value": 6,
+      "op": ">=",
+      "threshold": 3,
+      "passed": true
+    }
+  }
+}
